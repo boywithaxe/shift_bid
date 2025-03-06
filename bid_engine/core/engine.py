@@ -92,7 +92,7 @@ class BidEngine:
 
     def assign_items(self) -> Dict[int, Tuple[str, int]]:
         """
-        Assigns items based on user rankings and preferences.
+        Assigns items based on user rankings and preferences, considering multiple instances of shifts.
         Users with rankings but no selections will be skipped.
         
         Returns:
@@ -104,8 +104,16 @@ class BidEngine:
         if not self.user_selections or not self.user_rankings:
             raise ValidationError("Must import both selections and rankings before assignment")
 
+        # Calculate shift instances based on user selections
+        shift_instances: Dict[str, int] = {}
+        for selections in self.user_selections.values():
+            for shift in selections:
+                if shift in shift_instances:
+                    shift_instances[shift] += 1
+                else:
+                    shift_instances[shift] = 1
+
         user_rankings_sorted = sorted(self.user_rankings, key=lambda x: x[1])
-        assigned_items: Set[str] = set()
         self.assignments = {}
 
         for user, _ in user_rankings_sorted:
@@ -115,9 +123,9 @@ class BidEngine:
 
             assignment_made = False
             for index, item in enumerate(self.user_selections[user]):
-                if item not in assigned_items:
+                if shift_instances.get(item, 0) > 0:
                     self.assignments[user] = (item, index + 1)
-                    assigned_items.add(item)
+                    shift_instances[item] -= 1
                     assignment_made = True
                     break
 
